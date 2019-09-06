@@ -1,0 +1,2 @@
+bochs 'boot:floppy' 'floppya: 1_44=bin/os_image.iso, status=inserted'
+boot: floppy

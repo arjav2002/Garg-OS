@@ -1,0 +1,1 @@
+times 512*100 db 0	; to make sure loading more sectors than the kernel does not result in an error in QEMU
