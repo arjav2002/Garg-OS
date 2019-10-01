@@ -1,6 +1,10 @@
 #ifndef UHCI_H
 #define UHCI_H
 
+#define PCI_UHCI_BASE   0x0C
+#define PCI_UHCI_SUB_CLASS  0x03
+#define PCI_UHCI_PROG_IF    0x00
+
 #define USBBASE_UHCI	0x20
 
 #define USBCMD_UHCI	0x00

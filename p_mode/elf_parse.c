@@ -1,5 +1,6 @@
 #include "elf.h"
 #include "pci.h"
+#include "uhci.h"
 
 uint16_t* cursor = (uint16_t*) 0xB8000;
 
@@ -17,18 +18,18 @@ void puts(uint8_t* str) {
 
 void puth(uint32_t a) {
 	puts("0x");
-	
+
 	if(a == 0) {
 		putc(48);
 		return;
 	}
-	
+
 	uint32_t b = 0x10000000;
-	
+
 	while(b > a) {
 		b /= 0x10;
 	}
-	
+
 	while(b) {
 		uint8_t d = a / b;
 		if(d > 9) {
@@ -59,7 +60,7 @@ inb(uint16_t port)
 
 static inline void
 insl(uint32_t port, void *addr, uint32_t cnt)
-{ 	/* cld clears direction flag 
+{ 	/* cld clears direction flag
 	 * rep means "repeat while CX != 0"
 	 * insl is GAS syntax for INSD (input double word string)
 	 * INSD reads from ES:(E)DI
@@ -85,6 +86,59 @@ void waitdisk()
     ;
 }
 
+#include <stdint.h>
+
+static uint32_t inline indw(uint16_t port) {
+	uint32_t result;
+	__asm__("in %%dx, %%eax": "=a"(result) : "d"(port));
+	return result;
+}
+
+static void inline outdw(uint16_t port, uint32_t dword) {
+	__asm__("out %%eax, %%dx"::"d"(port), "a"(dword));
+}
+
+static void inline outw(uint16_t port, uint16_t word) {
+	__asm__("out %%ax, %%dx" : :"a" (word), "d" (port));
+}
+
+
+uint8_t bus0, device0, function0;
+uint32_t io_base0, *fl_base0;
+
+uint32_t pci_config_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset, uint8_t amount_of_bytes) {
+	uint32_t address;
+	uint32_t lbus = (uint32_t) bus;
+	uint32_t lslot = (uint32_t) slot;
+	uint32_t lfunc = (uint32_t) func;
+	uint32_t tmp = 0;
+	/* 31		30 - 24 	23 - 16 	15 - 11 	10 - 8 		7 - 0
+	Enable Bit 	Reserved 	Bus Number 	Device Number 	Function Number	Register Offset */
+	// offset is into the 256 byte configuration space
+	/* create configuration address */
+	address = (uint32_t)((lbus << 16) | (lslot << 11) | (lfunc << 8) | (offset & 0xFC) | ((uint32_t)0x80000000));
+	// write out the address
+	outdw(PCI_CONFIG_ADDR, address);
+	// read in the data
+	// (offset & 2) * 8 = 0 will choose the first word of the 32 bit register
+	tmp = indw(PCI_CONFIG_DATA);
+	if(amount_of_bytes == 1) return (tmp >> (((offset & 3) * 8))) & 0xFF;
+	if(amount_of_bytes == 2) return (tmp >> ((offset & 2) * 8)) & 0xFFFF;
+	return tmp;
+}
+
+// for now, using single variables
+void add_uhci(uint8_t bus, uint8_t device, uint8_t function) {
+	bus0 = bus;
+	device0 = device;
+	function0 = function;
+	io_base0 = pci_config_read(bus, device, function, USBBASE_UHCI, 2) & 0xFFF0;
+	//reading BAR4
+
+	fl_base0 = (uint32_t*)0x6000;
+	outdw(io_base0 + FLBASEADDR_UHCI, (uint32_t)fl_base0);
+	outw(io_base0 + FRNUM_UHCI, 0);
+}
 
 void read_sector(uint32_t sector_start, void* dest) {
 	 // Issue command.
@@ -99,18 +153,6 @@ void read_sector(uint32_t sector_start, void* dest) {
 	// Read data.
 	waitdisk();
 	insl(0x1F0, dest, 512/4);
-}
-
-#include <stdint.h>
-
-uint32_t indw(uint16_t port) {
-	uint32_t result;
-	__asm__("in %%dx, %%eax": "=a"(result) : "d"(port));
-	return result;
-}
-
-void outdw(uint16_t port, uint32_t dword) {
-	__asm__("out %%eax, %%dx"::"d"(port), "a"(dword));
 }
 
 uint16_t pci_config_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset) {
@@ -160,7 +202,7 @@ uint8_t get_subordinate_bus(uint8_t bus, uint8_t device, uint8_t function) {
 // subordinate bus is the last bus in the hierarchy
 
 uint8_t get_progif(uint8_t bus, uint8_t device, uint8_t function) {
-	return (uint8_t)( ( pci_config_read_word(bus, device, function, 0x9) ) & 0xFF );
+	return (uint8_t)( ( pci_config_read_word(bus, device, function, 0x9) >> 8 ) & 0xFF );
 }
 
 void check_bus(uint8_t bus);
@@ -176,8 +218,13 @@ void check_function(uint8_t bus, uint8_t device, uint8_t function) {
 		secondary_bus = get_secondary_bus(bus, device, function);
 		check_bus(secondary_bus);
 	}
-	Needed to be uncommented in case we stop using the Brute Force method.	
+	Needed to be uncommented in case we stop using the Brute Force method.
 	*/
+	if(base_class == PCI_UHCI_BASE && sub_class == PCI_UHCI_SUB_CLASS && get_progif(bus, device, function) == PCI_UHCI_PROG_IF) {
+		add_uhci(bus, device, function);
+		puts("ur mom ge xD");
+	}
+
 }
 
 void check_device(uint8_t bus, uint8_t device) {
@@ -204,7 +251,7 @@ void check_bus(uint8_t bus) {
 void check_all_buses() {
 	uint16_t bus;
 	uint8_t device;
-	
+
 	for(bus = 0; bus < 256; bus++) {
 		for(device = 0; device < 32; device++) {
 			check_device((uint8_t)bus, device);
@@ -241,4 +288,6 @@ void parse_ELF(uint32_t to_load_from) {
 			for(; i < program_header.p_memsz-program_header.p_filesz; i++) my_ptr[i] = (uint8_t)0;
 		}
 	}
+
+	for(;;);
 }

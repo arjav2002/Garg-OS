@@ -13,6 +13,7 @@ void add_uhci(uint8_t bus, uint8_t device, uint8_t function) {
 	device0 = device;
 	function0 = function;
 	io_base0 = pci_config_read(bus, device, function, USBBASE_UHCI, 2) & 0xFFF0;
+	// reading BAR4 for address
 
 	fl_base0 = kmalloc_a(4 * 1024);
 	outdw(io_base0 + FLBASEADDR_UHCI, (uint32_t)fl_base0);

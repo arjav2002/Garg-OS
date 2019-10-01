@@ -40,7 +40,13 @@ $(OBJDIR)/stage2_asm.o : $(P_MODE)/stage2.asm
 	$(ASM) $(P_MODE)/stage2.asm $(ELF) -o $(OBJDIR)/stage2_asm.o
 
 $(OBJDIR)/elf_parse.o : $(P_MODE)/elf_parse.c
-	$(C) -c $(P_MODE)/elf_parse.c $(FREESTANDING) -o $(OBJDIR)/elf_parse.o $(CINCLUDE) 
+	$(C) -c $(P_MODE)/elf_parse.c $(FREESTANDING) -o $(OBJDIR)/elf_parse.o $(CINCLUDE)
+
+$(OBJDIR)/pci.o : $(PCI)/pci.c
+	$(C) -c $(PCI)/pci.c $(FREESTANDING) -o $(OBJDIR)/pci.o $(CINCLUDE)
+
+$(OBJDIR)/uhci.o : $(USB)/uhci.c
+	$(C) -c $(USB)/uhci.c $(FREESTANDING) -o $(OBJDIR)/uhci.o $(CINCLUDE)
 
 $(OBJDIR)/stage2.bin : $(STAGE2_OBJFILES)
 	$(LD) -o $(OBJDIR)/stage2.bin -T $(STAGE2_LINKER) $(STAGE2_OBJFILES) --oformat binary
@@ -89,12 +95,6 @@ $(OBJDIR)/isrs.o : $(SOFTWARE_INTERRUPTS)/isrs.c $(C_INCLUDE_DIR)/system.h $(C_I
 
 $(OBJDIR)/irq.o : $(HARDWARE_INTERRUPTS)/irq.c
 	$(C) -c $(HARDWARE_INTERRUPTS)/irq.c $(FREESTANDING) -o $(OBJDIR)/irq.o $(CINCLUDE)
-
-$(OBJDIR)/pci.o : $(PCI)/pci.c
-	$(C) -c $(PCI)/pci.c $(FREESTANDING) -o $(OBJDIR)/pci.o $(CINCLUDE)
-
-$(OBJDIR)/uhci.o : $(USB)/uhci.c
-	$(C) -c $(USB)/uhci.c $(FREESTANDING) -o $(OBJDIR)/uhci.o $(CINCLUDE)
 
 $(OBJDIR)/kheap.o : $(KERNEL_MEM_MANAGE)/kheap.c
 	$(C) -c $(KERNEL_MEM_MANAGE)/kheap.c $(FREESTANDING) -o $(OBJDIR)/kheap.o $(CINCLUDE)
