@@ -136,7 +136,7 @@ void add_uhci(uint8_t bus, uint8_t device, uint8_t function) {
 	//reading BAR4
 
 	fl_base0 = (uint32_t*)0x6000;
-	outdw(io_base0 + FLBASEADDR_UHCI, (uint32_t)fl_base0);
+	outdw(io_base0 + FLBASEADDR_UHCI, (uint32_t)fl_base0); // setting frame list base address register
 	outw(io_base0 + FRNUM_UHCI, 0);
 }
 
