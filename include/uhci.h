@@ -19,7 +19,7 @@ struct frame_list_ptr {
     uint8_t qh_td   :1;
     uint8_t reserved    :2;
     uint32_t flp    :28;
-} __packed;
+} __attribute__((packed));
 typedef struct frame_list_ptr flptr_t;
 
 struct transfer_descriptor {
@@ -41,10 +41,10 @@ struct transfer_descriptor {
     uint8_t device_addr :7;
     uint8_t end_pt      :4;
     uint8_t data_toggle :1;
-    uint8_t reserved    :1;
+    uint8_t reserved4   :1;
     uint16_t max_len    :11;
     uint32_t buffer_ptr :32;
-} __packed;
+} __attribute__((packed));
 typedef struct transfer_descriptor td_t;
 
 struct queue_head {
@@ -56,7 +56,7 @@ struct queue_head {
     uint8_t qh_td_elptr :1;
     uint8_t reserved2   :2;
     uint32_t qelp       :28;
-} __packed;
+} __attribute__((packed));
 typedef struct queue_head qh_t;
 
 #endif

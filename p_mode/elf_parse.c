@@ -98,6 +98,12 @@ static void inline outdw(uint16_t port, uint32_t dword) {
 	__asm__("out %%eax, %%dx"::"d"(port), "a"(dword));
 }
 
+static uint8_t inline inw(uint16_t port) {
+	uint16_t result; 
+	__asm__("in %%dx, %%ax" : "=a" (result) : "d" (port)); 
+	return result;
+}
+
 static void inline outw(uint16_t port, uint16_t word) {
 	__asm__("out %%ax, %%dx" : :"a" (word), "d" (port));
 }
@@ -136,6 +142,8 @@ void add_uhci(uint8_t bus, uint8_t device, uint8_t function) {
 	//reading BAR4
 
 	fl_base0 = (uint32_t*)0x6000;
+	outw(io_base0 + USBSTS_UHCI, inw(io_base0 + USBSTS_UHCI) & 0xFFBF); // setting HCHalted to zero
+	outw(io_base0 + USBCMD_UHCI, inw(io_base0 + USBCMD_UHCI) & 0xFFFE); // setting USBCMD Run/Stop bit to zero
 	outdw(io_base0 + FLBASEADDR_UHCI, (uint32_t)fl_base0); // setting frame list base address register
 	outw(io_base0 + FRNUM_UHCI, 0);
 }

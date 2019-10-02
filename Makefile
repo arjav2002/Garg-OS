@@ -1,4 +1,4 @@
-C = i686-elf-gcc
+C = i686-elf-gcc -Wno-packed-bitfield-compat
 ASM = nasm
 ELF = -f elf -g
 BIN = -f bin -g
