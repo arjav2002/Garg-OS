@@ -230,7 +230,7 @@ void check_function(uint8_t bus, uint8_t device, uint8_t function) {
 	*/
 	if(base_class == PCI_UHCI_BASE && sub_class == PCI_UHCI_SUB_CLASS && get_progif(bus, device, function) == PCI_UHCI_PROG_IF) {
 		add_uhci(bus, device, function);
-		puts("ur mom ge xD");
+		puts("no, u");
 	}
 
 }

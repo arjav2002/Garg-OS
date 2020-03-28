@@ -26,6 +26,9 @@ bsFileSystem: 	        DB 	"        "
 boot_main:
 mov [BOOT_DRIVE], dl
 
+;Rather than hardcoding the boot-drive, using the one provided by the BIOS
+
+
 xor ax, ax
 mov ds, ax
 mov es, ax
