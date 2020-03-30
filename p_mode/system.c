@@ -126,3 +126,7 @@ regs_t get_current_regs() {
 
 	return current_regs;
 }
+
+void print_regs(regs_t regs) {
+	printf("CS: %x\tDS: %x\tES: %x\tFS: %x\nGS: %x\tEDI: %x\tESI: %x\tEBP: %x\tESP: %x\nEBX: %x\tEDX: %x\tECX: %x\tEAX: %x\nINT_NO: %x\tERR_CODE: %x\tEIP: %x\nEFLAGS: %x\tUSERESP: %x\tSS: %x\t", regs.cs, regs.ds, regs.es, regs.fs, regs.gs, regs.edi, regs.esi, regs.ebp, regs.esp, regs.ebx, regs.edx, regs.ecx, regs.eax, regs.int_no, regs.err_code, regs.eip, regs.eflags, regs.useresp, regs.ss);
+}

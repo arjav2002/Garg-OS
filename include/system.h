@@ -87,5 +87,6 @@ extern void get_gdt_descriptor(gdt_descriptor* gdt);
 extern void flush_tss();
 extern void copy_regs(regs_t* new_regs, regs_t* r);
 extern regs_t get_current_regs();
+extern void print_regs(regs_t regs);
 
 #endif

@@ -6,8 +6,11 @@
 #define PRIORITY2_TIME_SLICE_MILLIS	25
 #define PRIORITY3_TIME_SLICE_MILLIS	10
 
+#include "process.h"
+
+extern process* proc_arr;
+
 extern void init_scheduler();
 extern int start_next_process(regs_t* current_proc_regs);
-extern uint32_t add_process(uint32_t stack_size, uint32_t code_size, regs_t registers, uint8_t* code, uint8_t priority_level);
 
 #endif

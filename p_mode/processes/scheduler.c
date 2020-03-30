@@ -1,90 +1,64 @@
-#include "process_list.h"
 #include "scheduler.h"
-#include "kheap.h"
+#include "process_list.h"
 #include "paging.h"
-#include "heap.h"
+#include "system.h"
 #include "screen.h"
 #include "timer.h"
+#include "kheap.h"
 
-element* current_element;
-extern element* kernel_handle;
-extern uint32_t place_addr;
-// memory layout of a process:- Kernel mapping, code, stack, heap
-// memory layout of kernel process:- OS-IMAGE & CODE, KMALLOC (ends at place_addr), TSS allocated stack, heap until KERNEL_MEM_END is reached
-uint32_t init_proc(process* proc, uint8_t priority_level, uint32_t* page_directory, uint32_t stack_size, uint32_t code_size, regs_t registers, uint8_t* code) {
-	proc->priority_level = priority_level;
-	proc->page_directory = page_directory;
-	proc->pid = list_size;
-	proc->last_state_regs = registers;
-	proc->heap_stack_boundary = (page_directory == kernel_directory?place_addr : KERNEL_MEM_END) + code_size + stack_size;
+int cur_proc_index = -1;
+int scheduler_active = 0;
+int is_first_run = 1;
 
-	uint32_t heap_size;
-	if(page_directory != kernel_directory) heap_size = (((proc->heap_stack_boundary >> 12) + 0x1) << 12) - proc->heap_stack_boundary; // covers the leftover page where stack ends
-	else heap_size = KERNEL_MEM_END - proc->heap_stack_boundary;
-	proc->heap_size = heap_size;
-
-	uint32_t i = KERNEL_MEM_END;
-	// allocates all memory specific to the process
-	for(; i < (heap_size + proc->heap_stack_boundary); i += PAGE_SIZE) {
-		uint32_t phys_addr = alloc_page(page_directory, i, 1, (page_directory == kernel_directory));
-		if(phys_addr == -1) {
-			printf("\nOut of pages while initialising process. System halted. PID = %d", proc->pid);
-			for(;;);
-		}
-		if(code_size > 0) {
-			uint32_t amount_copied = code_size > PAGE_SIZE? PAGE_SIZE : code_size;
-			memcpy((void*)phys_addr, (void*)code, amount_copied);
-			code += amount_copied;
-			code_size -= amount_copied;
-		}
-	}
-	if(page_directory != kernel_directory) map_kernel_into_dir(page_directory);
-	
-	// the size available for heap will atmost be ( heap_size requested - sizeof(block) ) 
-	initialise_heap(proc);
-	return proc->pid;
-}
-
-int start_next_process(regs_t* registers) {
-	// stop current process
-	process* current_proc = current_element->proc;
-	current_proc->last_state_regs = *registers;
-	// switch to next process
-	current_element = current_element->next;
-	// start current process
-	uint32_t time_slice;
-	switch(current_element->proc->priority_level) {
+int time_slice(uint8_t priority_level) {
+	switch(priority_level) {
 	case 0:
-		time_slice = PRIORITY0_TIME_SLICE_MILLIS;
-		break;
+		return 100;
 	case 1:
-		time_slice = PRIORITY1_TIME_SLICE_MILLIS;
-		break;
+		return 50;
 	case 2:
-		time_slice = PRIORITY2_TIME_SLICE_MILLIS;
-		break;
+		return 25;
 	case 3:
-		time_slice = PRIORITY3_TIME_SLICE_MILLIS;
+		return 10;
+	default:
+		return 5;
 	}
-	copy_regs(&(current_element->proc->last_state_regs), registers);
-	switch_page_directory(current_element->proc->page_directory);
-	return time_slice;
 }
 
-
-void init_scheduler() {
-	process* kernel_proc = (process*) kmalloc(sizeof(process));
-	regs_t kernel_regs; // this is safe because the regs get set in the timer if kernel is the only process for some time.
-	kernel_proc->pid = init_proc(kernel_proc, 0, kernel_directory, 0, 0, kernel_regs, NULL); 
-	init_list(kernel_proc);
-	current_element = kernel_handle;
-	set_time_slice(PRIORITY0_TIME_SLICE_MILLIS);
+void init_scheduler(void* kernel_func) {
+	init_process_list();
+	process* kernel_proc = proc_arr;
+	kernel_proc->priority_level = 0;
+	kernel_proc->pid = 0;
+	kernel_proc->page_directory = kernel_directory;
+	kernel_proc->last_state_regs.ds = 0x10;
+	kernel_proc->last_state_regs.cs = 0x08;
+	kernel_proc->last_state_regs.eip = (uint32_t) kernel_func;
+	kernel_proc->last_state_regs.ss = 0x10;
+	kernel_proc->last_state_regs.es = 0x10;
+	kernel_proc->last_state_regs.fs = 0x10;
+	kernel_proc->last_state_regs.gs = 0x10;
+	kernel_proc->last_state_regs.eflags = 0x202;
+	kernel_proc->last_state_regs.useresp = (uint32_t)kmalloc(0x1000) + 0x1000;
+	kernel_proc->last_state_regs.ebp = kernel_proc->last_state_regs.useresp;
+	set_time_slice(40);
+	cur_proc_index = 0;
 }
 
-uint32_t add_process(uint32_t stack_size, uint32_t code_size, regs_t registers, uint8_t* code, uint8_t priority_level) {
-	process* new_proc = (process*) malloc(sizeof(process), kernel_handle->proc, 0);
-	uint32_t* page_directory = (uint32_t*) malloc(TABLES_PER_DIRECTORY * sizeof(uint32_t), kernel_handle->proc, 1);
-	memset(page_directory, 0, TABLES_PER_DIRECTORY * sizeof(uint32_t));
-	new_proc->pid = init_proc(new_proc, priority_level, page_directory, stack_size, code_size, registers, code);
-	add_element(new_proc);
+int start_next_process(regs_t* current_proc_regs) {
+	if(scheduler_active) {
+		int i = cur_proc_index;
+		do {
+			i++;
+			if(i >= MAX_PROC) i = 0;
+			if(proc_arr[i].pid != -1) {
+				if(!is_first_run) proc_arr[cur_proc_index].last_state_regs = *current_proc_regs;
+				else is_first_run = 0;
+				*current_proc_regs = proc_arr[i].last_state_regs;
+				switch_page_directory(proc_arr[i].page_directory);
+				cur_proc_index = i;
+			}
+		} while(cur_proc_index != i);
+		return time_slice(proc_arr[cur_proc_index].priority_level);	
+	} else return 50;
 }

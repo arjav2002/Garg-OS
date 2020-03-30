@@ -1,22 +1,35 @@
-#include "process_list.h"
-#include "process.h"
-#include "heap.h"
 #include "kheap.h"
+#include "system.h"
+#include "process_list.h"
+#include "screen.h"
 
-uint32_t list_size = 0;
-element* kernel_handle = NULL;
+process* proc_arr;
 
-void init_list(process* kernel_proc) {
-	kernel_handle = (element*) kmalloc(sizeof(element));
-	kernel_handle->proc = kernel_proc;
-	kernel_handle->next = kernel_handle;
-	list_size = 1;
+uint32_t list_size;
+
+void init_process_list() {
+	proc_arr = (process*) kmalloc(sizeof(process)*MAX_PROC);
+	list_size = 0;
+	for(uint8_t i = 0; i < MAX_PROC; i++) proc_arr[i].pid = -1;
 }
 
-void add_element(process* proc) {
-	element* new_element = (element*) malloc(sizeof(element), kernel_handle->proc, 0);
-	new_element->proc = proc;
-	new_element->next = kernel_handle->next;
-	kernel_handle->next = new_element;
-	list_size++;
+int add_process(process proc) {
+	for(int i = 0; i < MAX_PROC; i++) {
+		if(proc_arr[i].pid == -1) {
+			proc_arr[i] = proc;
+			proc_arr[i].pid = i;
+			return i;
+		}
+	}
+	printf("No space for any other process!\n");
+	return -1;
+}
+
+void show_all_procs() {
+	printf("ALL PROCESSES:\n");
+	for(int i = 0; i < MAX_PROC; i++) if(proc_arr[i].pid != -1) printf("PROC ID: %d\n", proc_arr[i].pid); 
+}
+
+void remove_process(process proc) {
+	for(int i = 0; i < MAX_PROC; i++) if(proc_arr[i].pid == proc.pid) proc_arr[i].pid = -1;
 }

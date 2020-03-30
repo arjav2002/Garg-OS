@@ -296,6 +296,4 @@ void parse_ELF(uint32_t to_load_from) {
 			for(; i < program_header.p_memsz-program_header.p_filesz; i++) my_ptr[i] = (uint8_t)0;
 		}
 	}
-
-	for(;;);
 }

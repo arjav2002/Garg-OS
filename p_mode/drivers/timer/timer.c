@@ -11,7 +11,6 @@
 uint32_t timer_ticks = 0;
 uint32_t freq = 18;
 uint32_t time_slice_millis = 0;
-extern element* current_element;
 
 void timer_handler(regs_t *r) {
 	timer_ticks++;

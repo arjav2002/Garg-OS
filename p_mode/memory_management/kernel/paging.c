@@ -22,7 +22,6 @@ uint32_t INDEX_FROM_ADDRESS(uint32_t a) { return INDEX_FROM_BIT(a/PAGE_SIZE); }
 uint32_t OFFSET_FROM_ADDRESS(uint32_t a) { return OFFSET_FROM_BIT(a/PAGE_SIZE); }
 
 extern uint32_t place_addr;
-extern element* kernel_handle;
 
 void write_bitset(uint32_t phys_addr, uint32_t toWrite);
 int32_t is_reserved_frame(uint32_t phys_addr);
@@ -31,11 +30,12 @@ uint32_t get_bitset(uint32_t phys_addr);
 // all directories and page tables will be stored in identity mapped pages
 // directories and page tables will only be allocated with kernel_directory as active
 
+uint32_t* kernel_directory;
+
 void init_paging() {
 	// kernel_directory is the OS's directory for its own processes
 	kernel_directory = kmalloc_a(sizeof(uint32_t*) * TABLES_PER_DIRECTORY); 
 	memset(kernel_directory, 0, sizeof(uint32_t*) * TABLES_PER_DIRECTORY);
-	
 	frames = kmalloc_a(sizeof(uint32_t) * INDEX_FROM_BIT(nframes));
 	memset(frames, 0, INDEX_FROM_BIT(sizeof(uint32_t) * nframes));
 	
@@ -98,7 +98,7 @@ void add_frame_to_kernel_dir(uint32_t frame_addr) {
 uint32_t alloc_page_pr(uint32_t *directory, uint32_t vaddr, uint32_t phys_addr, uint32_t is_writeable, uint32_t is_kernel, uint32_t is_privileged) {
 	// check if phys_addr already allocated or is requested frame reserved and the request is not privileged
 	// this will result in false if frame is reserved and request is privileged
-	// or if neither is frame privileged nor is the request
+	// or if neither is frame privileged nor is the requestkernel_directory
 	if(frames[INDEX_FROM_ADDRESS(phys_addr)] & (1 << OFFSET_FROM_ADDRESS(phys_addr))) {
 		puts("\nPhysical page: ");
 		puth(phys_addr);
@@ -110,7 +110,7 @@ uint32_t alloc_page_pr(uint32_t *directory, uint32_t vaddr, uint32_t phys_addr, 
 	uint32_t pageIndex = PAGE_INDEX_FROM_VIRTUAL_ADDRESS(vaddr);
 	// if table is not present in memory
 	if((directory[tableIndex] & 0x1) == 0) {
-		uint32_t* table_addr = directory == kernel_directory? kmalloc_a(sizeof(uint32_t)*PAGES_PER_TABLE) : malloc(sizeof(uint32_t) * PAGES_PER_TABLE, kernel_handle->proc, 1);
+		uint32_t* table_addr = directory == kernel_directory? kmalloc_a(sizeof(uint32_t)*PAGES_PER_TABLE) : kmalloc(sizeof(uint32_t) * PAGES_PER_TABLE);
 		directory[tableIndex] = (uint32_t)table_addr | ((is_writeable?2:0) | (is_kernel?0:4) | 1);
 		memset((void*)(directory[tableIndex] & 0xFFFFF000), 0, PAGES_PER_TABLE * sizeof(uint32_t));
 		// table accessible by all
@@ -162,6 +162,7 @@ void page_fault_handler(regs_t r) {
 	printf("The fault %sduring an instruction fetch.\n", (errcode & 16)?"occurred ":"did not occur ");
 	printf("Bitset at that address: %d", get_bitset(cr2));
 	printf("\nPage for that address: %x", get_page(current_dir, cr2));
+	print_regs(r);
 	printf("\nSystem Halted!");
 	for(;;);
 }
@@ -187,19 +188,6 @@ uint32_t get_page(uint32_t* directory, uint32_t vaddr) {
 	table = (uint32_t*)((uint32_t)table & 0xFFFFF000); // removal of flags
 	uint32_t page = table[PAGE_INDEX_FROM_VIRTUAL_ADDRESS(vaddr)];
 	return page;
-}
-
-void map_kernel_into_dir(uint32_t* user_dir) {
-	uint32_t i = 0;
-	for(; i < KERNEL_MEM_END; i+=PAGE_SIZE) {
-		uint32_t table_index = TABLE_INDEX_FROM_VIRTUAL_ADDRESS(i);
-		if(user_dir[table_index] == 0) {
-			user_dir[table_index] = (i & 0xFFFFF000) | 0x1 | 0x2; // present, writeable and not kernel
-		}
-		uint32_t* table = (uint32_t*) (user_dir[table_index] & 0xFFFFF000);
-		uint32_t page_index = PAGE_INDEX_FROM_VIRTUAL_ADDRESS(i);
-		table[page_index] = i | 0x1 | 0x2;
-	}
 }
 
 uint32_t get_bitset(uint32_t phys_addr) {
