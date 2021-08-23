@@ -45,6 +45,8 @@ void init_scheduler(void* kernel_func) {
 	cur_proc_index = 0;
 }
 
+// this takes a bit of time to kick in after activating the scheduler, so
+// some statements right after activating the scheduler could be run.
 int start_next_process(regs_t* current_proc_regs) {
 	if(scheduler_active) {
 		int i = cur_proc_index;

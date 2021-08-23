@@ -2,6 +2,7 @@
 #include "system.h"
 #include "process_list.h"
 #include "screen.h"
+#include "heap.h"
 
 process* proc_arr;
 

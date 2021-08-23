@@ -30,7 +30,7 @@ uint32_t alloc_page(uint32_t* directory, uint32_t vaddr, uint32_t is_writeable, 
 uint32_t alloc_page_pr(uint32_t *directory, uint32_t vaddr, uint32_t phys_addr, uint32_t is_writeable, uint32_t is_kernel, uint32_t is_privileged);
 void free_page(uint32_t* directory, uint32_t vaddr);
 uint32_t first_free_frame();
-void map_kernel_into_dir(uint32_t* user_dir);
+uint32_t* get_new_kernel_mapped_dir();
 
 uint32_t get_page(uint32_t* directory, uint32_t vaddr);
 void print_dir(uint32_t* directory);

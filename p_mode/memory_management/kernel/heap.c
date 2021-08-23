@@ -32,14 +32,21 @@ void* get_free_block(process* proc, uint32_t bytes, uint8_t align) {
 			if(align) {
 				// if current memory area is aligned then return that
 				if(effective_addr + sizeof(block) % 0x1000 == 0) return (void*)effective_addr;
+				
 				// else find next aligned address
 				uint32_t next_aligned_addr;
 				uint32_t block_end = effective_addr + sizeof(block) + info->size;
-				for(next_aligned_addr = (((effective_addr + sizeof(block)) >> 12) + 0x1) << 12; block_end - next_aligned_addr >= bytes; next_aligned_addr += 0x1000) {
+				
+				for(next_aligned_addr = (((effective_addr + sizeof(block)) >> 12) + 0x1) << 12;
+					block_end - next_aligned_addr >= bytes;
+					next_aligned_addr += 0x1000) {
+					
 					// check if block is big enough to divide block there.
 					if(next_aligned_addr - effective_addr <= 2*sizeof(block)) continue;
+					
 					// assuring that new_bytes > 0
 					uint32_t new_bytes = next_aligned_addr - effective_addr - 2*sizeof(block);
+					
 					block* new_info = divide_block(info, new_bytes);
 					if(new_info != NULL) {
 						new_info->is_free = 0;
@@ -89,9 +96,11 @@ void unite_free_blocks(process* proc) {
 
 void initialise_heap(process* proc) {
 	uint32_t first_block_addr = proc->heap_stack_boundary;
+	//printf("heap_stack boundary: %x\theap_size: %x\tpid: %d\n", proc->heap_stack_boundary, proc->heap_size, proc->pid);
 	block* info = (block*) first_block_addr;
 	info->size = proc->heap_size - sizeof(block);
 	info->is_free = 1;
+	//printf("heap of pid %d initialised to size: %x\n", proc->pid, info->size);
 }
 
 void print_heap_summuary(process* proc) {

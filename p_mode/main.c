@@ -23,37 +23,80 @@ extern void **fault_handlers;
 
 extern int scheduler_active;
 
-void lol() {
-	int lol = 0;
-	while(1) {
-		lol++;
-		if(lol >= 5000000) {
-			printf("XD\t");
-			lol = 0;
-		}
-	}
-}
+process proc2, proc3;
 
 void lol2() {
+	initialise_heap(&proc2);
 	int lol2 = 0;
+	uint32_t* mptr = malloc(50, &proc2, 0);
+	*mptr = 5;
 	while(1) {
 		lol2++;
-		if(lol2 >= 5000000) {
-			printf("XD2\t");
+		if(lol2 >= 50000000) {
+			printf("Value @ %x: %x\n", mptr, *mptr);
 			lol2 = 0;
 		}
 	}
 }
 
 void lol3() {
+	initialise_heap(&proc3);
+	uint32_t* mptr = malloc(50, &proc3, 0);
+	*mptr = 6;
 	int lol3 = 0;
 	while(1) {
 		lol3++;
-		if(lol3 >= 5000000) {
-			printf("XD3\t");
+		if(lol3 >= 50000000) {
+			printf("Value @ %x: %x\n", mptr, *mptr);
 			lol3 = 0;
 		}
 	}
+}
+
+void lol() {
+	int lol = 0;
+	
+	proc2.page_directory = get_new_kernel_mapped_dir();
+	proc2.priority_level = 0;
+	regs_t regis;
+	regis.ds = 0x10;
+	regis.cs = 0x08;
+	regis.eip = (uint32_t) lol2;
+	regis.ss = 0x10;
+	regis.es = 0x10;
+	regis.fs = 0x10;
+	regis.gs = 0x10;
+	regis.eflags = 0x202;
+	uint32_t size = 0x1000;
+	alloc_page(proc2.page_directory, KERNEL_MEM_END, 1, 1);
+	alloc_page(proc2.page_directory, KERNEL_MEM_END + 0x1000, 1, 1);
+	regis.useresp = (uint32_t)KERNEL_MEM_END + 0x1000;
+	regis.ebp = regis.useresp;
+	proc2.heap_stack_boundary = regis.ebp;
+	proc2.heap_size = 0x1000;
+	proc2.last_state_regs = regis;
+	add_process(proc2);
+	
+	proc3.page_directory = get_new_kernel_mapped_dir();
+	proc3.priority_level = 0;
+	regis.ds = 0x10;
+	regis.cs = 0x08;
+	regis.eip = (uint32_t) lol3;
+	regis.ss = 0x10;
+	regis.es = 0x10;
+	regis.fs = 0x10;
+	regis.gs = 0x10;
+	regis.eflags = 0x202;
+	alloc_page(proc3.page_directory, KERNEL_MEM_END, 1, 1);
+	alloc_page(proc3.page_directory, KERNEL_MEM_END + 0x1000, 1, 1);
+	regis.useresp = (uint32_t)KERNEL_MEM_END + 0x1000;
+	regis.ebp = regis.useresp;
+	proc3.heap_stack_boundary = regis.ebp;
+	proc3.heap_size = 0x1000;
+	proc3.last_state_regs = regis;
+	add_process(proc3);
+	
+	while(1);
 }
 
 
@@ -61,7 +104,6 @@ void main() {
 	init_video();
 	init_tss();
 	idt_install();
-	register_fault_handler(0, divideByZero);
 
 	init_paging();
 	timer_install();
@@ -69,13 +111,11 @@ void main() {
 	keyboard_install();
 	register_fault_handler(0, divideByZero);
 	printf("Thank you for choosing Garg-OS!\n");
-	
 	//check_all_buses();
-
 	init_scheduler(lol);
 	scheduler_active = 1;
-	process proc2;
-	proc2.page_directory = kernel_directory;
+	/*process proc2;
+	proc2.page_directory = get_new_kernel_mapped_dir();
 	proc2.priority_level = 0;
 	regs_t regis;
 	regis.ds = 0x10;
@@ -89,14 +129,16 @@ void main() {
 	regis.useresp = (uint32_t)kmalloc(0x1000) + 0x1000;
 	regis.ebp = regis.useresp;
 	proc2.last_state_regs = regis;
-	add_process(proc2);
-	regis.useresp = (uint32_t)kmalloc(0x1000) + 0x1000;
+	add_process(proc2);*/
+	/*regis.useresp = (uint32_t)kmalloc(0x1000) + 0x1000;
 	regis.ebp = regis.useresp;
 	proc2.last_state_regs = regis;
 	proc2.last_state_regs.eip = (uint32_t) lol3;
-	add_process(proc2);
+	add_process(proc2);*/
+	//print_heap_summuary(proc_arr+sizeof(process));
+	//void* ptr = malloc(5000, &proc2, 0);
 }
 
 void divideByZero(regs_t r) {
-	printf("You are a dumbo. Don't divide by zero. System halted!\n");
+	printf("Don't divide by zero. System halted!\n");
 }
