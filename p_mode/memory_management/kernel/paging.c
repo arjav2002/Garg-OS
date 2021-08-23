@@ -49,6 +49,25 @@ void init_paging() {
 	enable_paging();
 }
 
+uint32_t* get_new_kernel_mapped_dir() {
+	uint32_t* new_dir = kmalloc_a(sizeof(uint32_t*) * TABLES_PER_DIRECTORY); 
+	memset(new_dir, 0, sizeof(uint32_t*) * TABLES_PER_DIRECTORY);
+	uint32_t i = 0;
+	while(i < KERNEL_MEM_END) {
+		uint32_t table_index = TABLE_INDEX_FROM_VIRTUAL_ADDRESS(i);
+		uint32_t page_index = PAGE_INDEX_FROM_VIRTUAL_ADDRESS(i);
+		if((new_dir[table_index] & 0x1) == 0) {
+			new_dir[table_index] = (uint32_t)kmalloc_a(sizeof(uint32_t) * PAGES_PER_TABLE);
+			new_dir[table_index] |= 0x1 + 0x2; // present, writeable, user mode access not allowed
+		}
+		uint32_t* page_table = (uint32_t*) (new_dir[table_index] & 0xFFFFF000);
+		page_table[page_index] = i | (0x1 + 0x2); // present, writeable, user mode access not allowed
+		
+		i += PAGE_SIZE;
+	}
+	return new_dir;
+}
+
 void enable_paging() {
 	write_cr0(read_cr0() | 0x80000000);
 }

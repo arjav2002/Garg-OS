@@ -18,5 +18,6 @@ extern uint32_t list_size;
 // only to be called in the scheduler
 int add_process(process proc);
 void init_process_list();
+void show_all_procs();
 
 #endif
