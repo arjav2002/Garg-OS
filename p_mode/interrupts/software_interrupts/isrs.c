@@ -126,6 +126,7 @@ void fault_handler(regs_t *r) {
 		if(fault_handlers[r->int_no]) {
 			void (*fnc)() = fault_handlers[r->int_no];
 			fnc(*r);
+			return;
 		}
 	}
 	outb(0x20, 0x20);	// End of Interrupt signal

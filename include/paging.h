@@ -27,7 +27,7 @@ uint32_t upper_bound;
 void switch_page_directory(uint32_t* page_dir);
 void enable_paging();
 uint32_t alloc_page(uint32_t* directory, uint32_t vaddr, uint32_t is_writeable, uint32_t is_kernel);
-uint32_t alloc_page_pr(uint32_t *directory, uint32_t vaddr, uint32_t phys_addr, uint32_t is_writeable, uint32_t is_kernel, uint32_t is_privileged);
+uint32_t alloc_page_pr(uint32_t *directory, uint32_t vaddr, uint32_t phys_addr, uint32_t is_writeable, uint32_t is_kernel, uint32_t is_privileged, uint8_t lazy_pager);
 void free_page(uint32_t* directory, uint32_t vaddr);
 uint32_t first_free_frame();
 uint32_t* get_new_kernel_mapped_dir();

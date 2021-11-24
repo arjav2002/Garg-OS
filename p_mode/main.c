@@ -48,6 +48,8 @@ void lol3() {
 		lol3++;
 		if(lol3 >= 50000000) {
 			printf("Value @ %x: %x\n", mptr, *mptr);
+			//uint32_t *ptr = 0xfff8137f; random unallocated address
+			//*ptr = 0xdeadbeef;
 			lol3 = 0;
 		}
 	}
